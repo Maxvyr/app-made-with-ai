@@ -1,0 +1,18 @@
+{
+  "name": "icon-to-icontitle",
+  "version": "1.0.0",
+  "description": "",
+  "main": "mergeIconAndTitle.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node mergeIconAndTitle.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "inquirer": "^10.0.3",
+    "sharp": "^0.33.4"
+  }
+}
