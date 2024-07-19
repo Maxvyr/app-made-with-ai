@@ -2,10 +2,13 @@ import inquirer from "inquirer";
 import sharp from "sharp";
 import path from "path";
 import { fileURLToPath } from "url";
-import { dirname } from "path";
+
+const FINAL_WIDTH = 604;
+const FINAL_HEIGHT = 241;
+const PADDING = 20;
+const FONT_SIZE = 48;
 
 async function mergeIconAndTitle() {
-  // Get user input for the title
   const { title } = await inquirer.prompt([
     {
       type: "input",
@@ -15,13 +18,12 @@ async function mergeIconAndTitle() {
   ]);
 
   const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-
+  const __dirname = path.dirname(__filename);
   const iconPath = path.join(__dirname, "icon.png");
   const outputPath = path.join(__dirname, "icon-title.png");
 
   try {
-    // Read the original icon
+    // Read and resize the original icon
     const icon = sharp(iconPath);
     const metadata = await icon.metadata();
 
@@ -29,19 +31,34 @@ async function mergeIconAndTitle() {
       throw new Error("Unable to read image dimensions");
     }
 
-    const textWidth = title.length * 305; // Estimate text width
-    const newWidth = metadata.width + textWidth + 20; // Add padding
-    const newHeight = Math.max(metadata.height, 50); // Ensure minimum height for text
+    const aspectRatio = metadata.width / metadata.height;
+    const newIconHeight = FINAL_HEIGHT - PADDING * 2;
+    const newIconWidth = Math.min(newIconHeight * aspectRatio, FINAL_WIDTH / 2);
 
-    // Create a new image with the icon and title
+    const resizedIcon = await icon
+      .resize(Math.round(newIconWidth), Math.round(newIconHeight), {
+        fit: "contain",
+      })
+      .toBuffer();
+
+    // Calculate text position
+    const iconWidth = Math.round(newIconWidth);
+    const textX = iconWidth + PADDING * 2;
+
+    // Create SVG with icon and text
     const svgImage = `
-      <svg width="${newWidth}" height="${newHeight}">
-        <image href="data:image/png;base64,${(await icon.toBuffer()).toString(
+      <svg width="${FINAL_WIDTH}" height="${FINAL_HEIGHT}">
+        <rect width="100%" height="100%" fill="black"/>
+        <image href="data:image/png;base64,${resizedIcon.toString(
           "base64"
-        )}" x="0" y="0" height="${metadata.height}" width="${metadata.width}" />
-        <text x="${metadata.width + 10}" y="${
-      newHeight / 2
-    }" font-family="Arial" font-size="96" fill="white" dominant-baseline="middle">${title}</text>
+        )}" x="${PADDING}" y="${
+      (FINAL_HEIGHT - newIconHeight) / 2
+    }" width="${iconWidth}" height="${newIconHeight}" />
+        <text x="${textX}" y="${
+      FINAL_HEIGHT / 2
+    }" font-family="Arial" font-size="${FONT_SIZE}" fill="white" dominant-baseline="middle" text-anchor="start">
+          ${fitTextToWidth(title)}
+        </text>
       </svg>
     `;
 
@@ -52,6 +69,15 @@ async function mergeIconAndTitle() {
   } catch (error) {
     console.error("An error occurred:", error);
   }
+}
+
+function fitTextToWidth(text) {
+  if (text.length <= 17) {
+    return text;
+  }
+
+  // Truncate with ellipsis if too long
+  throw new Error("Text too long, 17 characters max");
 }
 
 mergeIconAndTitle();
