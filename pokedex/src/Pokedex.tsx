@@ -19,7 +19,9 @@ const PokedexList = () => {
   const fetchPokemon = async () => {
     try {
       setLoading(true);
-      const response = await fetch("https://pokeapi.co/api/v2/pokemon?limit=151");
+      const response = await fetch(
+        "https://pokeapi.co/api/v2/pokemon?limit=1000"
+      );
       const data = await response.json();
       const pokemonWithDetails = await Promise.all(
         data.results.map(async (p, index) => {
@@ -39,11 +41,16 @@ const PokedexList = () => {
     }
   };
 
-  const filteredPokemon = pokemon.filter((p) => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filteredPokemon = pokemon.filter((p) =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const indexOfLastPokemon = currentPage * pokemonPerPage;
   const indexOfFirstPokemon = indexOfLastPokemon - pokemonPerPage;
-  const currentPokemon = filteredPokemon.slice(indexOfFirstPokemon, indexOfLastPokemon);
+  const currentPokemon = filteredPokemon.slice(
+    indexOfFirstPokemon,
+    indexOfLastPokemon
+  );
 
   const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
@@ -54,7 +61,13 @@ const PokedexList = () => {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-3xl font-bold mb-4">Pokedex</h1>
-      <Input type="text" placeholder="Search Pokemon" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="mb-4" />
+      <Input
+        type="text"
+        placeholder="Search Pokemon"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        className="mb-4"
+      />
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {currentPokemon.map((p) => (
           <Link to={`/pokemon/${p.id}`} key={p.id}>
@@ -70,10 +83,17 @@ const PokedexList = () => {
         ))}
       </div>
       <div className="mt-4 flex justify-center">
-        <Button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="mr-2">
+        <Button
+          onClick={() => paginate(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="mr-2"
+        >
           Previous
         </Button>
-        <Button onClick={() => paginate(currentPage + 1)} disabled={indexOfLastPokemon >= filteredPokemon.length}>
+        <Button
+          onClick={() => paginate(currentPage + 1)}
+          disabled={indexOfLastPokemon >= filteredPokemon.length}
+        >
           Next
         </Button>
       </div>
