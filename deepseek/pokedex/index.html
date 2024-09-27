@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pokédex</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="pokedex">
+      <h1>Pokédex</h1>
+      <div id="pokemon-list"></div>
+    </div>
+
+    <!-- Dialog to show Pokémon details -->
+    <div id="pokemon-dialog" class="dialog">
+      <div class="dialog-content">
+        <span class="close">&times;</span>
+        <h2 id="dialog-name"></h2>
+        <img id="dialog-image" src="" alt="Pokemon Image" />
+        <p><strong>Type:</strong> <span id="dialog-type"></span></p>
+        <p><strong>Height:</strong> <span id="dialog-height"></span> dm</p>
+        <p><strong>Weight:</strong> <span id="dialog-weight"></span> hg</p>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
