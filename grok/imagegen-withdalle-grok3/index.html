@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DALL-E 3 Image Generator</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>DALL-E 3 Image Generator</h1>
+      <div class="input-section">
+        <textarea id="prompt" placeholder="Enter your image description..."></textarea>
+        <button onclick="generateImage()">Generate Image</button>
+      </div>
+      <div id="status" class="status"></div>
+      <div id="image-container" class="image-container">
+        <img id="generated-image" alt="Generated Image" />
+      </div>
+    </div>
+    <script src="script.js"></script>
+  </body>
+</html>
