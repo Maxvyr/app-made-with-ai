@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sky Builder Game</title>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        font-family: Arial, sans-serif;
+      }
+      canvas {
+        display: block;
+      }
+      #ui {
+        position: absolute;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        color: white;
+        border-radius: 5px;
+      }
+      #ui button {
+        margin: 5px;
+        padding: 8px 12px;
+        background: #4caf50;
+        border: none;
+        color: white;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      #ui button:hover {
+        background: #45a049;
+      }
+      #instructions {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        color: white;
+        border-radius: 5px;
+        max-width: 300px;
+      }
+      #selection-info {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        color: white;
+        border-radius: 5px;
+        display: none;
+      }
+      .movement-controls {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 5px;
+        margin-top: 10px;
+      }
+      .movement-controls button {
+        margin: 2px;
+        padding: 5px;
+        background: #2196f3;
+        border: none;
+        color: white;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .movement-controls button:hover {
+        background: #0b7dda;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="instructions">
+      <h3>Sky Builder Instructions:</h3>
+      <p>• Use W, A, S, D to move around</p>
+      <p>• Click and drag mouse to look around</p>
+      <p>• Click on objects to select them</p>
+      <p>• Use arrow controls to move selected objects</p>
+      <p>• Press DELETE to remove selected object</p>
+    </div>
+    <div id="ui">
+      <button id="add-cloud">Add Cloud</button>
+      <button id="add-balloon">Add Hot Air Balloon</button>
+      <button id="add-bird">Add Bird</button>
+    </div>
+    <div id="selection-info">
+      <h3>Selected Object</h3>
+      <p id="object-type">Type: None</p>
+      <div class="movement-controls">
+        <button id="move-up-y">↑ Up</button>
+        <button id="move-forward">Forward</button>
+        <button id="move-down-y">↓ Down</button>
+        <button id="move-left">← Left</button>
+        <button id="move-backward">Backward</button>
+        <button id="move-right">→ Right</button>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+      // Initialize the scene, camera, and renderer
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      const renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      // Set the sky background color (light blue)
+      scene.background = new THREE.Color(0x87ceeb);
+
+      // Create a sun
+      const sunGeometry = new THREE.SphereGeometry(5, 32, 32);
+      const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+      const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+      sun.position.set(100, 100, -100);
+      scene.add(sun);
+
+      // Create ambient light
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      scene.add(ambientLight);
+
+      // Create directional light (sunlight)
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(100, 100, -100);
+      scene.add(directionalLight);
+
+      // Create a "ground" plane to represent the bottom of the sky
+      const planeGeometry = new THREE.PlaneGeometry(500, 500);
+      const planeMaterial = new THREE.MeshBasicMaterial({
+        color: 0x228b22,
+        side: THREE.DoubleSide,
+      });
+      const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+      plane.rotation.x = Math.PI / 2;
+      plane.position.y = -50;
+      scene.add(plane);
+
+      // Set up camera position
+      camera.position.y = 10;
+      camera.position.z = 50;
+
+      // Array to store all placeable objects
+      const placeableObjects = [];
+      let selectedObject = null;
+
+      // Raycaster for object selection
+      const raycaster = new THREE.Raycaster();
+      const mouse = new THREE.Vector2();
+
+      // Helper to highlight selected object
+      const selectionBox = new THREE.BoxHelper(new THREE.Mesh(), 0xffff00);
+      scene.add(selectionBox);
+      selectionBox.visible = false;
+
+      // Helper function to create a cloud
+      function createCloud() {
+        const group = new THREE.Group();
+
+        // Create several spheres to form a cloud
+        const cloudMaterial = new THREE.MeshPhongMaterial({ color: 0xffffff });
+
+        const sizes = [3, 2.5, 2, 3.5, 2.8];
+        const positions = [
+          [0, 0, 0],
+          [-2.5, 0, 0],
+          [2.5, 0, 0],
+          [0, 1, 1],
+          [0, 1, -1],
+        ];
+
+        for (let i = 0; i < 5; i++) {
+          const cloudPart = new THREE.Mesh(new THREE.SphereGeometry(sizes[i], 16, 16), cloudMaterial);
+          cloudPart.position.set(...positions[i]);
+          group.add(cloudPart);
+        }
+
+        // Position in front of the camera
+        group.position.set(
+          camera.position.x + camera.getWorldDirection(new THREE.Vector3()).x * 10,
+          camera.position.y + camera.getWorldDirection(new THREE.Vector3()).y * 10 + 5,
+          camera.position.z + camera.getWorldDirection(new THREE.Vector3()).z * 10
+        );
+
+        scene.add(group);
+        placeableObjects.push(group);
+
+        return group;
+      }
+
+      // Helper function to create a hot air balloon
+      function createBalloon() {
+        const group = new THREE.Group();
+
+        // Balloon (sphere)
+        const balloonGeometry = new THREE.SphereGeometry(4, 16, 16);
+        const balloonMaterial = new THREE.MeshPhongMaterial({ color: 0xff4444 });
+        const balloon = new THREE.Mesh(balloonGeometry, balloonMaterial);
+        group.add(balloon);
+
+        // Basket (box)
+        const basketGeometry = new THREE.BoxGeometry(2, 1.5, 2);
+        const basketMaterial = new THREE.MeshPhongMaterial({ color: 0x8b4513 });
+        const basket = new THREE.Mesh(basketGeometry, basketMaterial);
+        basket.position.y = -6;
+        group.add(basket);
+
+        // Ropes (lines)
+        const ropeColor = 0x8b4513;
+        const ropeMaterial = new THREE.LineBasicMaterial({ color: ropeColor });
+
+        const ropePositions = [
+          [-1, -1, -1],
+          [1, -1, -1],
+          [1, -1, 1],
+          [-1, -1, 1],
+        ];
+
+        for (let i = 0; i < 4; i++) {
+          const ropeGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(ropePositions[i][0], ropePositions[i][1], ropePositions[i][2]),
+            new THREE.Vector3(ropePositions[i][0] * 0.5, -5, ropePositions[i][2] * 0.5),
+          ]);
+          const rope = new THREE.Line(ropeGeometry, ropeMaterial);
+          group.add(rope);
+        }
+
+        // Position in front of the camera
+        group.position.set(
+          camera.position.x + camera.getWorldDirection(new THREE.Vector3()).x * 15,
+          camera.position.y + camera.getWorldDirection(new THREE.Vector3()).y * 15,
+          camera.position.z + camera.getWorldDirection(new THREE.Vector3()).z * 15
+        );
+
+        scene.add(group);
+        placeableObjects.push(group);
+
+        return group;
+      }
+
+      // Helper function to create a bird
+      function createBird() {
+        const group = new THREE.Group();
+
+        // Bird body
+        const bodyGeometry = new THREE.SphereGeometry(1, 16, 16);
+        const bodyMaterial = new THREE.MeshPhongMaterial({ color: 0x3399ff });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        group.add(body);
+
+        // Bird head
+        const headGeometry = new THREE.SphereGeometry(0.6, 16, 16);
+        const headMaterial = new THREE.MeshPhongMaterial({ color: 0x3399ff });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.set(0.8, 0.2, 0);
+        group.add(head);
+
+        // Bird beak
+        const beakGeometry = new THREE.ConeGeometry(0.2, 0.8, 16);
+        const beakMaterial = new THREE.MeshPhongMaterial({ color: 0xffaa00 });
+        const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+        beak.rotation.z = -Math.PI / 2;
+        beak.position.set(1.6, 0.2, 0);
+        group.add(beak);
+
+        // Bird wings
+        const wingGeometry = new THREE.BoxGeometry(0.8, 0.1, 2);
+        const wingMaterial = new THREE.MeshPhongMaterial({ color: 0x1e88e5 });
+
+        const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+        leftWing.position.set(0, 0.2, 1);
+        group.add(leftWing);
+
+        const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+        rightWing.position.set(0, 0.2, -1);
+        group.add(rightWing);
+
+        // Position in front of the camera
+        group.position.set(
+          camera.position.x + camera.getWorldDirection(new THREE.Vector3()).x * 15,
+          camera.position.y + camera.getWorldDirection(new THREE.Vector3()).y * 15,
+          camera.position.z + camera.getWorldDirection(new THREE.Vector3()).z * 15
+        );
+
+        scene.add(group);
+        placeableObjects.push(group);
+
+        return group;
+      }
+
+      // Keyboard controls for camera movement
+      const keys = {
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+      };
+
+      document.addEventListener("keydown", (event) => {
+        if (event.key.toLowerCase() in keys) {
+          keys[event.key.toLowerCase()] = true;
+        }
+
+        // Delete key to remove selected object
+        if (event.key === "Delete" && selectedObject) {
+          scene.remove(selectedObject);
+          placeableObjects.splice(placeableObjects.indexOf(selectedObject), 1);
+          selectedObject = null;
+        }
+      });
+
+      document.addEventListener("keyup", (event) => {
+        if (event.key.toLowerCase() in keys) {
+          keys[event.key.toLowerCase()] = false;
+        }
+      });
+
+      // Mouse movement for looking around
+      let mouseX = 0;
+      let mouseY = 0;
+      let isMouseDown = false;
+
+      document.addEventListener("mousedown", () => {
+        isMouseDown = true;
+      });
+
+      // Separate handling for drag (camera movement) and click (object selection)
+      let isDragging = false;
+      let clickStartTime = 0;
+
+      document.addEventListener("mousedown", (event) => {
+        isMouseDown = true;
+        clickStartTime = Date.now();
+      });
+
+      document.addEventListener("mouseup", (event) => {
+        const clickDuration = Date.now() - clickStartTime;
+        isMouseDown = false;
+
+        // If it's a short click (not a drag), try to select an object
+        if (clickDuration < 200 && !isDragging) {
+          // Calculate mouse position in normalized device coordinates
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+          // Update the picking ray with the camera and mouse position
+          raycaster.setFromCamera(mouse, camera);
+
+          // Calculate objects intersecting the picking ray
+          const intersects = raycaster.intersectObjects(scene.children, true);
+
+          // Check if we hit something
+          if (intersects.length > 0) {
+            // Find the first intersected object that is part of our placeable objects
+            for (let i = 0; i < intersects.length; i++) {
+              // Get the root parent (the group that contains the object parts)
+              let rootObject = intersects[i].object;
+              while (rootObject.parent && rootObject.parent !== scene) {
+                rootObject = rootObject.parent;
+              }
+
+              if (placeableObjects.includes(rootObject)) {
+                selectedObject = rootObject;
+
+                // Update selection info panel
+                const selectionInfo = document.getElementById("selection-info");
+                selectionInfo.style.display = "block";
+
+                // Determine object type
+                let objectType = "Unknown";
+                if (rootObject.children.length === 5 && rootObject.children[2].geometry instanceof THREE.ConeGeometry) {
+                  objectType = "Bird";
+                } else if (
+                  rootObject.children.length >= 5 &&
+                  rootObject.children[0].geometry instanceof THREE.SphereGeometry &&
+                  rootObject.children[1].geometry instanceof THREE.BoxGeometry
+                ) {
+                  objectType = "Hot Air Balloon";
+                } else {
+                  objectType = "Cloud";
+                }
+
+                document.getElementById("object-type").textContent = `Type: ${objectType}`;
+
+                // Update selection box
+                selectionBox.setFromObject(selectedObject);
+                selectionBox.visible = true;
+
+                break;
+              }
+            }
+          } else {
+            // If we click on empty space, deselect
+            selectedObject = null;
+            selectionBox.visible = false;
+            document.getElementById("selection-info").style.display = "none";
+          }
+        }
+
+        isDragging = false;
+      });
+
+      document.addEventListener("mousemove", (event) => {
+        if (isMouseDown) {
+          // After moving a bit, consider it a drag (for camera movement)
+          isDragging = true;
+
+          // Reduced sensitivity by changing the multiplier from 0.002 to 0.0008
+          mouseX = (event.clientX - window.innerWidth / 2) * 0.0008;
+          mouseY = (event.clientY - window.innerHeight / 2) * 0.0008;
+
+          camera.rotation.y -= mouseX;
+          camera.rotation.x -= mouseY;
+
+          // Limit vertical rotation
+          camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+
+          mouseX = 0;
+          mouseY = 0;
+        }
+      });
+
+      // Add event listeners for UI buttons
+      document.getElementById("add-cloud").addEventListener("click", () => {
+        selectedObject = createCloud();
+      });
+
+      document.getElementById("add-balloon").addEventListener("click", () => {
+        selectedObject = createBalloon();
+      });
+
+      document.getElementById("add-bird").addEventListener("click", () => {
+        selectedObject = createBird();
+
+        // Update selection box and info
+        selectionBox.setFromObject(selectedObject);
+        selectionBox.visible = true;
+        document.getElementById("selection-info").style.display = "block";
+        document.getElementById("object-type").textContent = "Type: Bird";
+      });
+
+      // Object movement controls
+      document.getElementById("move-up-y").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.position.y += 2;
+          selectionBox.update();
+        }
+      });
+
+      document.getElementById("move-down-y").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.position.y -= 2;
+          selectionBox.update();
+        }
+      });
+
+      document.getElementById("move-left").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.position.x -= 2;
+          selectionBox.update();
+        }
+      });
+
+      document.getElementById("move-right").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.position.x += 2;
+          selectionBox.update();
+        }
+      });
+
+      document.getElementById("move-forward").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.position.z -= 2;
+          selectionBox.update();
+        }
+      });
+
+      document.getElementById("move-backward").addEventListener("click", () => {
+        if (selectedObject) {
+          selectedObject.position.z += 2;
+          selectionBox.update();
+        }
+      });
+
+      // Handle window resize
+      window.addEventListener("resize", () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+      });
+
+      // Animation loop
+      function animate() {
+        requestAnimationFrame(animate);
+
+        // Handle keyboard controls
+        const speed = 0.5;
+        const direction = new THREE.Vector3();
+        camera.getWorldDirection(direction);
+        const right = new THREE.Vector3();
+        right.crossVectors(camera.up, direction).normalize();
+
+        if (keys.w) {
+          camera.position.addScaledVector(direction, speed);
+        }
+        if (keys.s) {
+          camera.position.addScaledVector(direction, -speed);
+        }
+        if (keys.a) {
+          camera.position.addScaledVector(right, speed);
+        }
+        if (keys.d) {
+          camera.position.addScaledVector(right, -speed);
+        }
+
+        // Animate birds' wings
+        placeableObjects.forEach((obj) => {
+          // Check if it's a bird by looking at its children
+          if (obj.children.length === 5) {
+            const leftWing = obj.children[3];
+            const rightWing = obj.children[4];
+
+            leftWing.rotation.x = Math.sin(Date.now() * 0.01) * 0.5;
+            rightWing.rotation.x = Math.sin(Date.now() * 0.01) * 0.5;
+          }
+        });
+
+        renderer.render(scene, camera);
+      }
+
+      animate();
+    </script>
+  </body>
+</html>
